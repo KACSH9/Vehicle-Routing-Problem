@@ -1,3 +1,9 @@
+'''
+TSP问题 
+2-opt + 2-exchange 
+SA接受准则
+'''
+
 # 1 导入库
 import pandas as pd
 import numpy as np
@@ -63,19 +69,35 @@ def calculate_path_length(path, distance_matrix):
     indices = np.arange(len(path) - 1)
     return np.sum(dist_mat[indices, indices + 1])
 
-# 2-opt
+# 6 邻域搜索
+# 6.1 2-opt
 def gen_neighbor_2opt(path):
     n = len(path)
-    i = random.randint(1, n - 3)
-    j = random.randint(i + 1, n - 2)
+    if n <= 4:
+        return path[:]
+    while True:
+        i = random.randint(1, n - 3)
+        j = random.randint(i + 1, n - 2)
+        if j - i > 1:
+            break
     new_path = path[:i] + path[i:j][::-1] + path[j:]
     return new_path
 
-# 模拟退火
-def simulated_annealing_tsp(
-        initial_path, distance_matrix, T0=1000.0, Tmin=1e-4, alpha=0.95, L=200, max_outer=1000
-):
+# 6.2 2-exchange
+def gen_neighbor_2exchange(path):
+    n = len(path)
+    if n <= 4:
+        return path[:]
+    i = random.randint(1, n - 2)
+    j = random.randint(1, n - 2)
+    while j == i:
+        j = random.randint(1, n - 2)
+    new_path = path[:]
+    new_path[i], new_path[j] = new_path[j], new_path[i]
+    return new_path
 
+# 7 模拟退火接受准则
+def simulated_annealing_tsp(initial_path, distance_matrix, T0, Tmin, alpha, L, max_outer, p):
     # 初始化
     x_cur = initial_path.copy()
     f_cur = calculate_path_length(x_cur, distance_matrix)
@@ -100,7 +122,11 @@ def simulated_annealing_tsp(
 
         # 内循环
         for _ in range(L):
-            x_new = gen_neighbor_2opt(x_cur)
+            if random.random() < p:
+                x_new = gen_neighbor_2opt(x_cur)
+            else:
+                x_new = gen_neighbor_2exchange(x_cur)
+
             f_new = calculate_path_length(x_new, distance_matrix)
             delta = f_new - f_cur
 
@@ -134,7 +160,7 @@ def simulated_annealing_tsp(
 
     return x_best, f_best, history_best, history_temp, iter_counter
 
-# 7 画图
+# 8 画图
 def plot_path(cities, path, depot_id=None):
     x_coords = [cities[city][0] for city in path] + [cities[path[0]][0]]
     y_coords = [cities[city][1] for city in path] + [cities[path[0]][1]]
@@ -180,7 +206,7 @@ def plot_temperature(history_temp):
     plt.tight_layout()
     plt.show()
 
-# 8 主程序
+# 9 主程序
 if __name__ == "__main__":
     cities, depot_id, customer_ids = read_tsp_excel(
         '/Users/sunhaoqing/Desktop/pythonProject/智能优化算法/ulysses16_TSP.xlsx'
@@ -195,7 +221,8 @@ if __name__ == "__main__":
         Tmin=1e-4,
         alpha=0.98,
         L=200,
-        max_outer=1000
+        max_outer=1000,
+        p=0.7
     )
 
     print("\n======== 结果 ========")
